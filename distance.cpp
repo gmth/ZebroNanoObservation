@@ -16,28 +16,39 @@ Distance::Distance() {
     durations[1] = DISTANCE_DURATION_MAX;
     durations[2] = DISTANCE_DURATION_MAX;
     durations[3] = DISTANCE_DURATION_MAX;
+    num_failed_readings = 0;
 
     pinMode(PIN_INT_ECHO, INPUT);
     pinMode(PIN_DATA_TRIGGER, OUTPUT);
 }
 
-void Distance::trigger() {
+
+int Distance::trigger() {
     // only trigger when it is allowed and we have 
-    if (triggered) {
-        return;
+    //! if (triggered) {
+    //!     return;
+    //! }
+    //! triggered = true;
+    //! Serial.print("Trig ");
+    //! Serial.print(digitalRead(PIN_INT_ECHO));
+    //! Serial.print("\n");
+    if(digitalRead(PIN_INT_ECHO) == HIGH) {
+        num_failed_readings++;
+        return num_failed_readings;
     }
-    triggered = true;
+    num_failed_readings = 0;
     digitalWrite(PIN_DATA_TRIGGER, LOW);
     delayMicroseconds(2);
     digitalWrite(PIN_DATA_TRIGGER, HIGH);
     delayMicroseconds(10);
     digitalWrite(PIN_DATA_TRIGGER, LOW);
+    return num_failed_readings;
 }
 
 int Distance::get_distance_mm() {
     int i;
-    int sum = 0;
-    int num = 0;
+    unsigned int sum = 0;
+    unsigned int num = 0;
 
     if (!new_distance_available) {
         return -1;
@@ -46,7 +57,7 @@ int Distance::get_distance_mm() {
     for (i = 0; i < 4; i++) {
         if (durations[i] > 0) {
             num++;
-            sum += durations[i];
+            sum += (durations[i] * 0.17);
         }
     }
 
@@ -56,10 +67,8 @@ int Distance::get_distance_mm() {
         Serial.println("Unexpected division by zero, this is a bug");
         return -2;
     }
-    
-    int avg = sum/num;
     new_distance_available = false;
-    return (int) (avg * 0.34/2);
+    return sum/num;
 }
 
 int Distance::get_duration() {
@@ -71,7 +80,6 @@ void Distance::update_buf() {
         return;
     }
     new_data_available = false;
-    Serial.println(duration_latest);
     
     if (duration_latest < DISTANCE_DURATION_MIN) {
         return; // if value impossibly small, discard
@@ -104,5 +112,5 @@ void Distance::IRQ_on_echo() {
     }
     duration_latest = echo_end - echo_start;
     new_data_available = true;
-    triggered = false;
+    //! triggered = false;
 }

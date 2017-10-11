@@ -25,7 +25,11 @@
     (byte & 0x01 ? '1' : '0')
 
 Distance g_dist;
-int g_distances[DISTANCE_NUM_ANGLES] = {0};
+/* positions: -75, -60, -45, -30, -15, 0, 15, 30, 45, 60, 75 */
+/* indices:     0    1     2   3    4  5  6   7   8   9   10 */
+
+unsigned int g_positions[DISTANCE_NUM_ANGLES] = {0};
+unsigned int g_distances[DISTANCE_NUM_ANGLES] = {0};
 int g_distance_ix = 0;
 
 Servo g_servo;            // Must be a global variable, else the servo
@@ -33,21 +37,24 @@ Servo g_servo;            // Must be a global variable, else the servo
 int g_servo_pos = SERVO_ANGLE_NEUTRAL;
 
 void servo_step_left() {
-    if (g_servo_pos < SERVO_ANGLE_MAX) {
-        g_servo_pos+=SERVO_ANGLE_STEP;
-        g_distance_ix++;
-        g_dist.reset();
-    }
+    //! if (g_servo_pos < SERVO_ANGLE_MAX) {
+    //!     g_servo_pos+=SERVO_ANGLE_STEP;
+    //!     g_distance_ix++;
+    //!     g_dist.reset();
+    //! }
+
+    g_servo_pos++;
     g_servo.write(g_servo_pos);
     delay(50);
 }
 
 void servo_step_right() {
-    if (g_servo_pos > SERVO_ANGLE_MIN) {
-        g_servo_pos-=SERVO_ANGLE_STEP;
-        g_distance_ix--;
-        g_dist.reset();
-    }
+    // if (g_servo_pos > SERVO_ANGLE_MIN) {
+    //     g_servo_pos-=SERVO_ANGLE_STEP;
+    //     g_distance_ix--;
+    //     g_dist.reset();
+    // }
+    g_servo_pos--;
     g_servo.write(g_servo_pos);
     delay(50);
 }
@@ -73,6 +80,20 @@ void IRQ_on_echo() {
     g_dist.IRQ_on_echo();
 }
 
+// There is no timeout on the ultrasound sensor; when it receives no echo,
+// the echo pin stays high. This disables the interrupt, forces the pin low,
+// and enables the interrupt again.
+void clear_echo_pin() {
+    detachInterrupt(digitalPinToInterrupt(PIN_INT_ECHO));
+    delay(30);
+    pinMode(PIN_INT_ECHO, OUTPUT);
+    digitalWrite(PIN_INT_ECHO, LOW);
+    delay(30);
+    pinMode(PIN_INT_ECHO, INPUT);
+    attachInterrupt(digitalPinToInterrupt(PIN_INT_ECHO), IRQ_on_echo, CHANGE);
+}
+
+
 void setup() {
     int i;
     Serial.begin(38400);
@@ -90,9 +111,14 @@ void loop() {
         g_distances[g_distance_ix] = g_dist.get_distance_mm();
         Serial.print("Distance: ");
         Serial.print(g_distances[g_distance_ix]);
+        Serial.print(" ");
+        Serial.print(g_distances[g_distance_ix] > 0);
         Serial.print("\n");
     }
-    g_dist.trigger();
+    if (g_dist.trigger() > 4) {
+        clear_echo_pin();
+    }
+
     g_dist.update_buf();
 
     if (Serial.available()) {
@@ -114,5 +140,5 @@ void loop() {
                 break;
         }
     }
-    delay(90);
+    delay(50);
 }
