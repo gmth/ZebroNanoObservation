@@ -10,14 +10,16 @@
 /* Any distance larger than the defined max is regarded infinetly far away */
 #define DISTANCE_DURATION_MAX 10000
 
+#define MEASUREMENT_MAX_NUM 4
+#define MEASUREMENT_MAX_NUM_TRIES 10
+
 class Distance {
     private:
         unsigned int echo_start;
         unsigned int echo_end;
         unsigned int duration_latest;
-        unsigned int durations[4];
+        unsigned int durations[MEASUREMENT_MAX_NUM];
         unsigned int num_failed_readings;
-        uint8_t ix_duration;
         bool new_data_available;
         bool triggered;
 
@@ -25,14 +27,12 @@ class Distance {
         bool new_distance_available;
         int trigger();
         void IRQ_on_echo();
-        void update_buf();
+        int check_distance(int measurement_ix);
         void rotate_left();
         void rotate_right();
-        void reset();
-        int get_distance_mm();
+        int get_distance_mm(int num_measurements);
         int get_duration();
         Distance();
 };
-
 
 #endif

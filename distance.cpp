@@ -7,7 +7,6 @@
 Distance::Distance() {
     echo_start = 0;
     echo_end = 0;
-    ix_duration = 0;
     new_data_available = false;
     new_distance_available = false;
     triggered = false;
@@ -45,29 +44,17 @@ int Distance::trigger() {
     return num_failed_readings;
 }
 
-int Distance::get_distance_mm() {
+int Distance::get_distance_mm(int num_measurements) {
     int i;
     unsigned int sum = 0;
     unsigned int num = 0;
 
-    if (!new_distance_available) {
-        return -1;
-    }
-
-    for (i = 0; i < 4; i++) {
+    for (i = 0; i < num_measurements; i++) {
         if (durations[i] > 0) {
             num++;
             sum += (durations[i] * 0.17);
         }
     }
-
-    if (num == 0) {
-     // prevent division by zero;
-     // shouln't happen because of check !new_distance_avail
-        Serial.println("Unexpected division by zero, this is a bug");
-        return -2;
-    }
-    new_distance_available = false;
     return sum/num;
 }
 
@@ -75,32 +62,26 @@ int Distance::get_duration() {
     return duration_latest;
 }
 
-void Distance::update_buf() {
+int Distance::check_distance(int measurement_ix) {
     if (!new_data_available) {
-        return;
+        return 0;
     }
     new_data_available = false;
+    //! Serial.print(measurement_ix);
+    //! Serial.print(": ");
+    //! Serial.print(duration_latest);
+    //! Serial.print("\n");
     
     if (duration_latest < DISTANCE_DURATION_MIN) {
-        return; // if value impossibly small, discard
+        return -1; // if value impossibly small, discard
     }
     
     if (duration_latest > DISTANCE_DURATION_MAX) {
         duration_latest = DISTANCE_DURATION_MAX;
     }
     
-    durations[ix_duration] = duration_latest;
-    ix_duration = (ix_duration + 1) % 4;
-    new_distance_available = true;
-}
-
-void Distance::reset() {
-    new_distance_available = false;
-    ix_duration = 0;
-    durations[0] = 0;
-    durations[1] = 0;
-    durations[2] = 0;
-    durations[3] = 0;
+    durations[measurement_ix] = duration_latest;
+    return 1;
 }
 
 void Distance::IRQ_on_echo() {
@@ -112,5 +93,4 @@ void Distance::IRQ_on_echo() {
     }
     duration_latest = echo_end - echo_start;
     new_data_available = true;
-    //! triggered = false;
 }
