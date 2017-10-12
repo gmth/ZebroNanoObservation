@@ -27,10 +27,10 @@ class Distance {
         bool new_distance_available;
         int trigger();
         void IRQ_on_echo();
-        int check_distance(int measurement_ix);
+        int check_distance(byte measurement_ix);
         void rotate_left();
         void rotate_right();
-        int get_distance_mm(int num_measurements);
+        byte get_distance_cm(byte num_measurements);
         int get_duration();
         Distance();
 };

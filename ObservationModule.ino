@@ -6,9 +6,9 @@
 #include "./inc/config.h"
 #include "./inc/ledring.h"
 #include "./inc/distance.h"
+#include "./inc/servomanager.h"
 
 #define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
-#define DISTANCE_NUM_ANGLES 11
 
 #define BYTE_TO_BINARY(byte)  \
     (byte & 0x80 ? '1' : '0'), \
@@ -21,49 +21,20 @@
     (byte & 0x01 ? '1' : '0')
 
 Distance g_dist;
+ServoManager g_servomanager;
 
-/* Left to right */
-unsigned int g_positions[] = {165, 150, 135, 120, 105, 90, 75, 60, 45, 30, 15};
-unsigned int g_distances[DISTANCE_NUM_ANGLES] = {0};
-int g_pos_ix = DISTANCE_NUM_ANGLES / 2;
-int g_pos_ix_previous = g_pos_ix;
-
-int g_num_measurement = 0;
-int g_num_measurement_tries = 0;
+byte g_distances[DISTANCE_NUM_ANGLES] = {0};
+byte g_num_measurement = 0;
+byte g_num_measurement_tries = 0;
 
 // temporary value, don't use in interrupt and only use directly after setting
 int g_temp;
-
-Servo g_servo;            // Must be a global variable, else the servo
-                          // forces itself all the way to the right, it seems..
-int g_servo_pos = g_positions[DISTANCE_NUM_ANGLES/2];
-
-void servo_step_left() {
-    if (g_pos_ix > 0) {
-        g_pos_ix--;
-    }
-    g_servo.write(g_positions[g_pos_ix]);
-    delay(50);
-}
-
-void servo_step_right() {
-    if (g_pos_ix < 11) {
-        g_pos_ix++;
-    }
-    g_servo.write(g_positions[g_pos_ix]);
-    delay(50);
-}
-
-void servo_set_neutral() {
-    g_pos_ix = DISTANCE_NUM_ANGLES / 2;
-    g_servo.write(g_positions[g_pos_ix]);
-    delay(100);
-}
+bool g_use_sweep = false;
 
 void print_distances() {
     int i;
     for (i = 0; i < DISTANCE_NUM_ANGLES; i++) {
-        Serial.print(g_distances[g_pos_ix]);
+        Serial.print(g_distances[i]);
         Serial.print(" ");
     }
     Serial.print("\n");
@@ -86,41 +57,26 @@ void clear_echo_pin() {
     attachInterrupt(digitalPinToInterrupt(PIN_INT_ECHO), IRQ_on_echo, CHANGE);
 }
 
-void sweep() {
-    if (g_pos_ix < g_pos_ix_previous) {
-        g_pos_ix_previous = g_pos_ix;
-        g_pos_ix--;
-        if (g_pos_ix < 0) {
-            g_pos_ix = 1;
-        }
-    }
-
-    else {
-        g_pos_ix_previous = g_pos_ix;
-        g_pos_ix++;
-        if (g_pos_ix == DISTANCE_NUM_ANGLES) {
-            g_pos_ix = DISTANCE_NUM_ANGLES - 2;
-        }
-    }
-}
-
 void handle_serial() {
     if (Serial.available()) {
         switch (Serial.read()) {
 
             case 'a':
-                servo_step_left();
-                Serial.println(g_servo_pos);
+                g_servomanager.step_left();
+                Serial.println(g_servomanager.get_pos());
                 break;
             case 'd':
-                servo_step_right();
-                Serial.println(g_servo_pos);
+                g_servomanager.step_right();
+                Serial.println(g_servomanager.get_pos());
                 break;
             case 'n':
-                servo_set_neutral();
+                g_servomanager.set_neutral();
                 break;
             case 'p':
                 print_distances();
+                break;
+            case 's':
+                g_servomanager.toggle_sweep();
                 break;
             default:
                 break;
@@ -130,20 +86,18 @@ void handle_serial() {
 
 void setup() {
     int i;
-    Serial.begin(38400);
+    Serial.begin(38400, SERIAL_8N1);
     Serial.println("Welcome!");
     Serial.println("Setting up");
         
     attachInterrupt(digitalPinToInterrupt(PIN_INT_ECHO), IRQ_on_echo, CHANGE);
-    g_servo.attach(PIN_PWM_SERVO);
-
+    g_servomanager.init();
     Serial.println("Done setting up");
 }
 
 void loop() {
-
-    sweep();
-    g_servo.write(g_positions[g_pos_ix]);
+    
+    g_servomanager.sweep();
     
     g_num_measurement = 0;
     g_num_measurement_tries = 0;
@@ -168,11 +122,12 @@ void loop() {
             g_num_measurement_tries++;
         }
     }
-
-    g_distances[g_pos_ix] = g_dist.get_distance_mm(g_num_measurement);
-    Serial.print(g_pos_ix);
+    
+    g_temp = g_servomanager.get_pos();
+    g_distances[g_temp] = g_dist.get_distance_cm(g_num_measurement);
+    Serial.print((byte) g_temp);
     Serial.print(": ");
-    Serial.print(g_distances[g_pos_ix]);
+    Serial.print(g_distances[g_temp]);
     Serial.print("\n");
 
     handle_serial();

@@ -44,7 +44,7 @@ int Distance::trigger() {
     return num_failed_readings;
 }
 
-int Distance::get_distance_mm(int num_measurements) {
+byte Distance::get_distance_cm(byte num_measurements) {
     int i;
     unsigned int sum = 0;
     unsigned int num = 0;
@@ -52,25 +52,21 @@ int Distance::get_distance_mm(int num_measurements) {
     for (i = 0; i < num_measurements; i++) {
         if (durations[i] > 0) {
             num++;
-            sum += (durations[i] * 0.17);
+            sum += (durations[i] * 0.017);
         }
     }
-    return sum/num;
+    return (byte) sum/num;
 }
 
 int Distance::get_duration() {
     return duration_latest;
 }
 
-int Distance::check_distance(int measurement_ix) {
+int Distance::check_distance(byte measurement_ix) {
     if (!new_data_available) {
         return 0;
     }
     new_data_available = false;
-    //! Serial.print(measurement_ix);
-    //! Serial.print(": ");
-    //! Serial.print(duration_latest);
-    //! Serial.print("\n");
     
     if (duration_latest < DISTANCE_DURATION_MIN) {
         return -1; // if value impossibly small, discard
