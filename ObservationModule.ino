@@ -9,6 +9,7 @@
 #include "./inc/servomanager.h"
 
 #define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
+#define UART_ADDR_OFFSET 15;
 
 #define BYTE_TO_BINARY(byte)  \
     (byte & 0x80 ? '1' : '0'), \
@@ -20,12 +21,12 @@
     (byte & 0x02 ? '1' : '0'), \
     (byte & 0x01 ? '1' : '0')
 
+byte g_distances[SERVO_NUM_ANGLES] = {0};
+byte g_num_measurement = 0;
+
 Distance g_dist;
 ServoManager g_servomanager;
-
-byte g_distances[DISTANCE_NUM_ANGLES] = {0};
-byte g_num_measurement = 0;
-byte g_num_measurement_tries = 0;
+LedRing g_ledring = LedRing(g_distances, g_dist.get_max_distance());
 
 // temporary value, don't use in interrupt and only use directly after setting
 int g_temp;
@@ -33,7 +34,7 @@ bool g_use_sweep = false;
 
 void print_distances() {
     int i;
-    for (i = 0; i < DISTANCE_NUM_ANGLES; i++) {
+    for (i = 0; i < SERVO_NUM_ANGLES; i++) {
         Serial.print(g_distances[i]);
         Serial.print(" ");
     }
@@ -57,30 +58,80 @@ void clear_echo_pin() {
     attachInterrupt(digitalPinToInterrupt(PIN_INT_ECHO), IRQ_on_echo, CHANGE);
 }
 
-void handle_serial() {
-    if (Serial.available()) {
-        switch (Serial.read()) {
+bool handle_pc_commands(byte b) {
+    switch (b) {
+        case 'a':
+            g_servomanager.step_left();
+            Serial.println(g_servomanager.get_pos());
+            break;
+        case 'd':
+            g_servomanager.step_right();
+            Serial.println(g_servomanager.get_pos());
+            break;
+        case 'n':
+            g_servomanager.set_neutral();
+            break;
+        case 'p':
+            print_distances();
+            break;
+        case 's':
+            g_servomanager.toggle_sweep();
+            break;
+        default:
+            return false;
+            break;
+    }
+    return true;
+}
 
-            case 'a':
-                g_servomanager.step_left();
-                Serial.println(g_servomanager.get_pos());
-                break;
-            case 'd':
-                g_servomanager.step_right();
-                Serial.println(g_servomanager.get_pos());
-                break;
-            case 'n':
-                g_servomanager.set_neutral();
-                break;
-            case 'p':
-                print_distances();
-                break;
-            case 's':
-                g_servomanager.toggle_sweep();
-                break;
-            default:
-                break;
-        }
+bool handle_pi_commands(byte b) {
+
+    switch(b) {
+        case 'r':
+            byte addr;
+            byte addr_with_offset;
+            // blocking wait for an address to be sent:
+            while ((addr_with_offset = Serial.read()) == -1);
+            addr = addr_with_offset - UART_ADDR_OFFSET;
+            
+            // wait for last zero byte, and carriage returns
+            // TODO: FIX
+            while (Serial.read() != 0);
+            while (Serial.read() != '\r');
+            while (Serial.read() != '\n');
+
+            if (addr < SERVO_NUM_ANGLES) {   // we're ok
+                Serial.write('s');              // success
+                Serial.write(addr_with_offset);
+                Serial.write(g_distances[addr]);
+                Serial.write('\r');
+                Serial.write('\n');
+            }
+            break;
+
+        case 'w':
+            break;
+        
+        default:
+            return false;
+    }
+    return true;
+}
+
+void handle_serial() {
+    bool ret = true;
+    char b;
+    if (Serial.available() > 2) {
+        b = Serial.read();
+        ret = handle_pi_commands(b);
+    }
+    
+    if (!ret) {
+        handle_pc_commands(b);
+    }
+
+    else if (Serial.available()) {
+        handle_pc_commands(Serial.read());
     }
 }
 
@@ -92,6 +143,7 @@ void setup() {
         
     attachInterrupt(digitalPinToInterrupt(PIN_INT_ECHO), IRQ_on_echo, CHANGE);
     g_servomanager.init();
+    g_ledring.init();
     Serial.println("Done setting up");
 }
 
@@ -100,26 +152,22 @@ void loop() {
     g_servomanager.sweep();
     
     g_num_measurement = 0;
-    g_num_measurement_tries = 0;
     
-    while(g_num_measurement < MEASUREMENT_MAX_NUM && \
-            g_num_measurement_tries < MEASUREMENT_MAX_NUM_TRIES) {
+    while(g_num_measurement < MEASUREMENT_MAX_NUM) {
     
-        if (g_dist.trigger() > 4) {
-            clear_echo_pin();
-        }
+        g_dist.trigger();
 
-        delay(50);  // enough  for 8.5 meter detection, which is more than the 
+        delay(25);  // enough  for 4.5 meter detection, which is more than the 
                     // sensor can do
 
         g_temp = g_dist.check_distance(g_num_measurement);
 
         if (g_temp == 1) {
             g_num_measurement++;
-            g_num_measurement_tries++;
         }
         if (g_temp == -1) {
-            g_num_measurement_tries++;
+            clear_echo_pin();
+            g_num_measurement++;
         }
     }
     
@@ -131,5 +179,6 @@ void loop() {
     Serial.print("\n");
 
     handle_serial();
+    g_ledring.update_values();
     delay(50);
 }

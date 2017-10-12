@@ -1,5 +1,5 @@
-DISTANCE_NUM_ANGLES = 11;
-g_pos_ix = DISTANCE_NUM_ANGLES//2;
+SERVO_NUM_ANGLES = 11;
+g_pos_ix = SERVO_NUM_ANGLES//2;
 g_pos_ix_previous = g_pos_ix;
 
 def sweep(pos_ix, pos_ix_previous):
@@ -12,8 +12,8 @@ def sweep(pos_ix, pos_ix_previous):
     else:
         pos_ix_previous = pos_ix;
         pos_ix+=1;
-        if (pos_ix == DISTANCE_NUM_ANGLES):
-            pos_ix = DISTANCE_NUM_ANGLES - 2;
+        if (pos_ix == SERVO_NUM_ANGLES):
+            pos_ix = SERVO_NUM_ANGLES - 2;
 
     return (pos_ix, pos_ix_previous)
 

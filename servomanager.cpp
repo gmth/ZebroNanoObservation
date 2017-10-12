@@ -3,7 +3,7 @@
 #include "Arduino.h"
 
 void ServoManager::init() {
-    pos_ix = DISTANCE_NUM_ANGLES / 2;
+    pos_ix = SERVO_NUM_ANGLES / 2;
     pos_ix_previous = pos_ix;
     servo.attach(PIN_PWM_SERVO);
     use_sweep = false;
@@ -28,7 +28,7 @@ void ServoManager::step_right() {
 }
 
 void ServoManager::set_neutral() {
-    pos_ix = DISTANCE_NUM_ANGLES / 2;
+    pos_ix = SERVO_NUM_ANGLES / 2;
     servo.write(positions[pos_ix]);
     delay(100);
 }
@@ -49,8 +49,8 @@ void ServoManager::sweep() {
     else {
         pos_ix_previous = pos_ix;
         pos_ix++;
-        if (pos_ix == DISTANCE_NUM_ANGLES) {
-            pos_ix = DISTANCE_NUM_ANGLES - 2;
+        if (pos_ix == SERVO_NUM_ANGLES) {
+            pos_ix = SERVO_NUM_ANGLES - 2;
         }
     }
 

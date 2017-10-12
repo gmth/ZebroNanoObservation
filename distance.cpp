@@ -17,31 +17,19 @@ Distance::Distance() {
     durations[3] = DISTANCE_DURATION_MAX;
     num_failed_readings = 0;
 
+    duration_latest = 0;
+
     pinMode(PIN_INT_ECHO, INPUT);
     pinMode(PIN_DATA_TRIGGER, OUTPUT);
 }
 
 
-int Distance::trigger() {
-    // only trigger when it is allowed and we have 
-    //! if (triggered) {
-    //!     return;
-    //! }
-    //! triggered = true;
-    //! Serial.print("Trig ");
-    //! Serial.print(digitalRead(PIN_INT_ECHO));
-    //! Serial.print("\n");
-    if(digitalRead(PIN_INT_ECHO) == HIGH) {
-        num_failed_readings++;
-        return num_failed_readings;
-    }
-    num_failed_readings = 0;
+void Distance::trigger() {
     digitalWrite(PIN_DATA_TRIGGER, LOW);
     delayMicroseconds(2);
     digitalWrite(PIN_DATA_TRIGGER, HIGH);
     delayMicroseconds(10);
     digitalWrite(PIN_DATA_TRIGGER, LOW);
-    return num_failed_readings;
 }
 
 byte Distance::get_distance_cm(byte num_measurements) {
@@ -62,22 +50,44 @@ int Distance::get_duration() {
     return duration_latest;
 }
 
+
 int Distance::check_distance(byte measurement_ix) {
+    int returnval = 0;
     if (!new_data_available) {
-        return 0;
+        return returnval;
     }
     new_data_available = false;
     
     if (duration_latest < DISTANCE_DURATION_MIN) {
-        return -1; // if value impossibly small, discard
+        duration_latest = 0;
+        //clear_echo_pin();
+        returnval = -1;
+        Serial.print(duration_previous);
+        Serial.print(" ");
+        Serial.println(duration_latest);
+        if (duration_previous == 0) {
+            duration_estimate = DISTANCE_DURATION_MAX; // 0 means infinity
+        }
+        else {
+            duration_estimate = duration_previous;
+        }
     }
-    
-    if (duration_latest > DISTANCE_DURATION_MAX) {
+    else if (duration_latest > DISTANCE_DURATION_MAX) {
+        returnval = 1;
         duration_latest = DISTANCE_DURATION_MAX;
+        duration_estimate = DISTANCE_DURATION_MAX;
+    }
+    else {
+        returnval = 1;
+        duration_estimate = duration_latest;
     }
     
-    durations[measurement_ix] = duration_latest;
-    return 1;
+    durations[measurement_ix] = duration_estimate;
+    return returnval;
+}
+
+byte Distance::get_max_distance() {
+    return (byte) DISTANCE_DURATION_MAX * 0.017;
 }
 
 void Distance::IRQ_on_echo() {
@@ -87,6 +97,7 @@ void Distance::IRQ_on_echo() {
         case LOW:
             echo_end = micros();
     }
+    duration_previous = duration_latest;
     duration_latest = echo_end - echo_start;
     new_data_available = true;
 }
