@@ -33,7 +33,7 @@ void rs232_open(void) {
     int result;
     struct termios tty;
 
-    fd_RS232 = open("/dev/ttyUSB1", O_RDWR | O_NOCTTY);  // Hardcode your serial port here, or request it as an argument at runtime
+    fd_RS232 = open("/dev/ttyUSB0", O_RDWR | O_NOCTTY);  // Hardcode your serial port here, or request it as an argument at runtime
 
     assert(fd_RS232>=0);
 
@@ -153,25 +153,9 @@ int main() {
     rs232_open();
     sleep(3);
 
-    packet_out.header = 'r';
-    packet_out.addr = 20;
+    packet_out.header = 's';
+    packet_out.addr = 0;
     packet_out.data = 0;
-    
-//!     while(true) {
-//!         c = rs232_getchar();
-//!         printf("%d ", c);
-//!         if (c == '0') {
-//!             c = rs232_getchar();
-//!             printf("%d ", c);
-//!             if (c == '\r') {
-//!                 c = rs232_getchar();
-//!                 printf("%d ", c);
-//!                 if (c == '\n') {
-//!                     packet_send();
-//!                 }
-//!             }
-//!         }
-//!     }
     
     while(true) {
         packet_send();
@@ -186,7 +170,7 @@ int main() {
         c = rs232_getchar();
         printf("char: %d \n", c);
         printf("\n");
-        sleep(1);
+        sleep(20);
     }
 
     rs232_close();

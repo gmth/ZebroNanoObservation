@@ -239,11 +239,9 @@ void serial_handle() {
                 break;
             case 'n':
                 serial_handle_neutral();
-                g_servomanager.set_neutral();
                 break;
             case 's':
                 serial_handle_sweep();
-                g_servomanager.toggle_sweep();
                 break;
             case 'q':
                 serial_handle_query();

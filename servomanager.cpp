@@ -55,10 +55,13 @@ void ServoManager::sweep() {
     }
 
     servo.write(positions[pos_ix]);
+    delay(50);
 }
 
 void ServoManager::toggle_sweep() {
     use_sweep = !use_sweep;
+    Serial.print("Sweep: ");
+    Serial.println(use_sweep);
 }
 
 char ServoManager::get_pos() {
