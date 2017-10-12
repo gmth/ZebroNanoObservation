@@ -25,6 +25,8 @@ struct Packet {
 
 int serial_device = 0;
 int fd_RS232;
+bool can_send = false;
+bool have_sent = false;
 struct Packet packet_in;
 struct Packet packet_out;
 
@@ -113,8 +115,15 @@ int rs232_putchar(char c) {
     return result;
 }
 
+void packet_print(struct Packet p) {
+    printf("%d %d %d %d %d\n", p.header, p.addr, p.data, p.cr, p.lf);
+}
+
 
 void packet_send() {
+    if (!can_send) {
+        return;
+    }
     packet_out.cr = '\r';
     packet_out.lf = '\n';
     rs232_putchar(packet_out.header);
@@ -122,6 +131,8 @@ void packet_send() {
     rs232_putchar(packet_out.data);
     rs232_putchar(packet_out.cr);
     rs232_putchar(packet_out.lf);
+    packet_print(packet_out);
+    have_sent = true;
 }
 
 bool packet_receive() {
@@ -147,30 +158,74 @@ bool packet_receive() {
     return ret;
 }
 
-int main() {
-    uint8_t c;
+void packet_read() {
 
+    if (!have_sent) {
+        return;
+    }
+    uint8_t c;
+    c = rs232_getchar();
+    printf("char: %d \n", c);
+    c = rs232_getchar();
+    printf("char: %d \n", c);
+    c = rs232_getchar();
+    printf("char: %d \n", c);
+    c = rs232_getchar();
+    printf("char: %d \n", c);
+    c = rs232_getchar();
+    printf("char: %d \n", c);
+    printf("\n");
+    have_sent = false;
+}
+
+void packet_create() {
+    char c;
+    c = getchar();
+    printf("\nGOT %c %d \n", c, c);
+    switch (c) {
+        case 'r':
+            packet_out.header = 'r';
+            packet_out.addr = 20;
+            packet_out.data = 0;
+            can_send = true;
+            break;
+        case 'w':
+            packet_out.header = 'w';
+            packet_out.addr = 20;
+            packet_out.data = 46;
+            can_send = true;
+            break;
+        case 's':
+            packet_out.header = 's';
+            packet_out.addr = 0;
+            packet_out.data = 0;
+            can_send = true;
+            break;
+        case 'n':
+            packet_out.header = 'n';
+            packet_out.addr = 0;
+            packet_out.data = 0;
+            can_send = true;
+            break;
+        default:
+            break;
+    }
+}
+
+int main() {
     rs232_open();
     sleep(3);
 
     packet_out.header = 's';
     packet_out.addr = 0;
     packet_out.data = 0;
-    
+    can_send = true;
     while(true) {
         packet_send();
-        c = rs232_getchar();
-        printf("char: %d \n", c);
-        c = rs232_getchar();
-        printf("char: %d \n", c);
-        c = rs232_getchar();
-        printf("char: %d \n", c);
-        c = rs232_getchar();
-        printf("char: %d \n", c);
-        c = rs232_getchar();
-        printf("char: %d \n", c);
-        printf("\n");
-        sleep(20);
+        can_send = false;
+        packet_read();
+        printf("Command: \n\t");
+        packet_create();
     }
 
     rs232_close();

@@ -265,5 +265,5 @@ void loop() {
     g_distances[g_temp] = g_dist.get_distance();
     serial_handle();
     g_ledring.update_values();
-    delay(50);
+    delay(100);
 }

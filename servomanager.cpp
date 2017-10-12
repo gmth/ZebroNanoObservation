@@ -60,8 +60,6 @@ void ServoManager::sweep() {
 
 void ServoManager::toggle_sweep() {
     use_sweep = !use_sweep;
-    Serial.print("Sweep: ");
-    Serial.println(use_sweep);
 }
 
 char ServoManager::get_pos() {
