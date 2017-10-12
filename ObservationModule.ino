@@ -7,9 +7,11 @@
 #include "./inc/ledring.h"
 #include "./inc/distance.h"
 #include "./inc/servomanager.h"
+#include "./inc/error.h"
 
 #define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
-#define UART_ADDR_OFFSET 15;
+#define UART_DISTANCE_ADDR_OFFSET 15
+#define UART_LED_ADDR_OFFSET 15
 
 #define BYTE_TO_BINARY(byte)  \
     (byte & 0x80 ? '1' : '0'), \
@@ -21,8 +23,17 @@
     (byte & 0x02 ? '1' : '0'), \
     (byte & 0x01 ? '1' : '0')
 
+struct Packet {
+    byte header;
+    byte addr;
+    byte data;
+    byte cr;
+    byte lf;
+};
+byte g_error = 0;
 byte g_distances[SERVO_NUM_ANGLES] = {0};
-byte g_num_measurement = 0;
+struct Packet packet_receive;
+struct Packet packet_send;
 
 Distance g_dist;
 ServoManager g_servomanager;
@@ -30,155 +41,231 @@ LedRing g_ledring = LedRing(g_distances, g_dist.get_max_distance());
 
 // temporary value, don't use in interrupt and only use directly after setting
 int g_temp;
-bool g_use_sweep = false;
 
-void print_distances() {
-    int i;
-    for (i = 0; i < SERVO_NUM_ANGLES; i++) {
-        Serial.print(g_distances[i]);
-        Serial.print(" ");
+void serial_send_packet() {
+    packet_send.cr = '\r';
+    packet_send.lf = '\n';
+    Serial.write(packet_send.header);
+    Serial.write(packet_send.addr);
+    Serial.write(packet_send.data);
+    Serial.write(packet_send.cr);
+    Serial.write(packet_send.lf);
+}
+
+void serial_handle_read() {
+    bool valid = true;
+    packet_receive.addr = Serial.read();
+    packet_receive.data = Serial.read();
+    packet_receive.cr = Serial.read();
+    packet_receive.lf = Serial.read();
+
+    if (packet_receive.addr - UART_DISTANCE_ADDR_OFFSET >= SERVO_NUM_ANGLES) {
+        g_error |= ERROR_UART_INVALID_ADDR;
+        packet_send.header = 'f';
+        valid = false;
     }
-    Serial.print("\n");
-}
-
-void IRQ_on_echo() {
-    g_dist.IRQ_on_echo();
-}
-
-// There is no timeout on the ultrasound sensor; when it receives no echo,
-// the echo pin stays high. This disables the interrupt, forces the pin low,
-// and enables the interrupt again.
-void clear_echo_pin() {
-    detachInterrupt(digitalPinToInterrupt(PIN_INT_ECHO));
-    delay(30);
-    pinMode(PIN_INT_ECHO, OUTPUT);
-    digitalWrite(PIN_INT_ECHO, LOW);
-    delay(30);
-    pinMode(PIN_INT_ECHO, INPUT);
-    attachInterrupt(digitalPinToInterrupt(PIN_INT_ECHO), IRQ_on_echo, CHANGE);
-}
-
-bool handle_pc_commands(byte b) {
-    switch (b) {
-        case 'a':
-            g_servomanager.step_left();
-            Serial.println(g_servomanager.get_pos());
-            break;
-        case 'd':
-            g_servomanager.step_right();
-            Serial.println(g_servomanager.get_pos());
-            break;
-        case 'n':
-            g_servomanager.set_neutral();
-            break;
-        case 'p':
-            print_distances();
-            break;
-        case 's':
-            g_servomanager.toggle_sweep();
-            break;
-        default:
-            return false;
-            break;
+    if (packet_receive.data != 0) {
+        g_error |= ERROR_UART_INVALID_DATA;
+        packet_send.header = 'f';
+        valid = false;
     }
-    return true;
-}
-
-bool handle_pi_commands(byte b) {
-
-    switch(b) {
-        case 'r':
-            byte addr;
-            byte addr_with_offset;
-            // blocking wait for an address to be sent:
-            while ((addr_with_offset = Serial.read()) == -1);
-            addr = addr_with_offset - UART_ADDR_OFFSET;
-            
-            // wait for last zero byte, and carriage returns
-            // TODO: FIX
-            while (Serial.read() != 0);
-            while (Serial.read() != '\r');
-            while (Serial.read() != '\n');
-
-            if (addr < SERVO_NUM_ANGLES) {   // we're ok
-                Serial.write('s');              // success
-                Serial.write(addr_with_offset);
-                Serial.write(g_distances[addr]);
-                Serial.write('\r');
-                Serial.write('\n');
-            }
-            break;
-
-        case 'w':
-            break;
-        
-        default:
-            return false;
+    if (packet_receive.cr != '\r') {
+        g_error |= ERROR_UART_INVALID_CR;
+        packet_send.header = 'f';
+        valid = false;
     }
-    return true;
-}
-
-void handle_serial() {
-    bool ret = true;
-    char b;
-    if (Serial.available() > 2) {
-        b = Serial.read();
-        ret = handle_pi_commands(b);
+    if (packet_receive.lf != '\n') {
+        g_error |= ERROR_UART_INVALID_LF;
+        packet_send.header = 'f';
+        valid = false;
+    }
+    if (valid) {
+        packet_send.header = 's';
+        packet_send.data = g_distances[packet_receive.addr - UART_DISTANCE_ADDR_OFFSET];
+        g_error &= ~(ERROR_UART_INVALID_ADDR);
+        g_error &= ~(ERROR_UART_INVALID_DATA);
+        g_error &= ~(ERROR_UART_INVALID_CR);
+        g_error &= ~(ERROR_UART_INVALID_LF);
     }
     
-    if (!ret) {
-        handle_pc_commands(b);
-    }
+    packet_send.addr = packet_receive.addr;
+    serial_send_packet();
+}
 
-    else if (Serial.available()) {
-        handle_pc_commands(Serial.read());
+void serial_handle_write() {
+    bool valid = true;
+    packet_receive.addr = Serial.read();
+    packet_receive.data = Serial.read();
+    packet_receive.cr = Serial.read();
+    packet_receive.lf = Serial.read();
+    
+    if (packet_receive.addr - UART_LED_ADDR_OFFSET >= NUM_LEDS) {
+        g_error |= ERROR_UART_INVALID_ADDR;
+        packet_send.header = 'f';
+        valid = false;
+    }
+    if (packet_receive.cr != '\r') {
+        g_error |= ERROR_UART_INVALID_CR;
+        packet_send.header = 'f';
+        valid = false;
+    }
+    if (packet_receive.lf != '\n') {
+        g_error |= ERROR_UART_INVALID_LF;
+        packet_send.header = 'f';
+        valid = false;
+    }
+    if (valid) {
+        packet_send.header = 's';
+        g_ledring.set_led(packet_receive.data, packet_receive.addr - UART_LED_ADDR_OFFSET);
+        g_error &= ~(ERROR_UART_INVALID_ADDR);
+        g_error &= ~(ERROR_UART_INVALID_DATA);
+        g_error &= ~(ERROR_UART_INVALID_CR);
+        g_error &= ~(ERROR_UART_INVALID_LF);
+    }
+    
+    packet_send.data = packet_receive.data;
+    packet_send.addr = packet_receive.addr;
+    serial_send_packet();
+}
+
+void serial_handle_neutral() {
+    bool valid = true;
+    packet_receive.addr = Serial.read();
+    packet_receive.data = Serial.read();
+    packet_receive.cr = Serial.read();
+    packet_receive.lf = Serial.read();
+    
+    if (packet_receive.addr != 0) {
+        g_error |= ERROR_UART_INVALID_ADDR;
+        packet_send.header = 'f';
+        valid = false;
+    }
+    if (packet_receive.data != 0) {
+        g_error |= ERROR_UART_INVALID_DATA;
+        packet_send.header = 'f';
+        valid = false;
+    }
+    if (packet_receive.cr != '\r') {
+        g_error |= ERROR_UART_INVALID_CR;
+        packet_send.header = 'f';
+        valid = false;
+    }
+    if (packet_receive.lf != '\n') {
+        g_error |= ERROR_UART_INVALID_LF;
+        packet_send.header = 'f';
+        valid = false;
+    }
+    if (valid) {
+        packet_send.header = 's';
+        g_servomanager.set_neutral();
+        g_error &= ~(ERROR_UART_INVALID_ADDR);
+        g_error &= ~(ERROR_UART_INVALID_DATA);
+        g_error &= ~(ERROR_UART_INVALID_CR);
+        g_error &= ~(ERROR_UART_INVALID_LF);
+    }
+    packet_send.data = packet_receive.data;
+    packet_send.addr = packet_receive.addr;
+    serial_send_packet();
+}
+
+void serial_handle_sweep() {
+    bool valid = true;
+    packet_receive.addr = Serial.read();
+    packet_receive.data = Serial.read();
+    packet_receive.cr = Serial.read();
+    packet_receive.lf = Serial.read();
+    
+    if (packet_receive.addr != 0) {
+        g_error |= ERROR_UART_INVALID_ADDR;
+        packet_send.header = 'f';
+        valid = false;
+    }
+    if (packet_receive.data != 0) {
+        g_error |= ERROR_UART_INVALID_DATA;
+        packet_send.header = 'f';
+        valid = false;
+    }
+    if (packet_receive.cr != '\r') {
+        g_error |= ERROR_UART_INVALID_CR;
+        packet_send.header = 'f';
+        valid = false;
+    }
+    if (packet_receive.lf != '\n') {
+        g_error |= ERROR_UART_INVALID_LF;
+        packet_send.header = 'f';
+        valid = false;
+    }
+    if (valid) {
+        packet_send.header = 's';
+        g_servomanager.toggle_sweep();
+        g_error &= ~(ERROR_UART_INVALID_ADDR);
+        g_error &= ~(ERROR_UART_INVALID_DATA);
+        g_error &= ~(ERROR_UART_INVALID_CR);
+        g_error &= ~(ERROR_UART_INVALID_LF);
+    }
+    packet_send.data = packet_receive.data;
+    packet_send.addr = packet_receive.addr;
+    serial_send_packet();
+}
+
+void serial_handle_query() {
+    // Dont check the data and addr stuff etc, because 
+    // that can mess up the error message (maybe there
+    // was no error, but because of this message there is)
+    // Its a tradeoff that might have to be revised;
+    packet_receive.addr = Serial.read();
+    packet_receive.data = Serial.read();
+    packet_receive.cr = Serial.read();
+    packet_receive.lf = Serial.read();
+    packet_send.header = 's';
+    packet_send.addr = 0;
+    packet_send.data = g_error;
+    serial_send_packet();
+}
+
+
+void serial_handle() {
+
+    // for UART, use the serial library. print sends nothing extra,
+    // println adds a linefeed, and a carriage return
+    
+    if (Serial.available() > 4) {
+        switch(Serial.read()) {
+            case 'r':
+                serial_handle_read();
+                break;
+            case 'w':
+                serial_handle_write();
+                break;
+            case 'n':
+                serial_handle_neutral();
+                g_servomanager.set_neutral();
+                break;
+            case 's':
+                serial_handle_sweep();
+                g_servomanager.toggle_sweep();
+                break;
+            case 'q':
+                serial_handle_query();
+                break;
+            default:
+                break;
+        }
     }
 }
 
 void setup() {
     int i;
     Serial.begin(38400, SERIAL_8N1);
-    Serial.println("Welcome!");
-    Serial.println("Setting up");
-        
-    attachInterrupt(digitalPinToInterrupt(PIN_INT_ECHO), IRQ_on_echo, CHANGE);
     g_servomanager.init();
     g_ledring.init();
-    Serial.println("Done setting up");
 }
 
 void loop() {
-    
     g_servomanager.sweep();
-    
-    g_num_measurement = 0;
-    
-    while(g_num_measurement < MEASUREMENT_MAX_NUM) {
-    
-        g_dist.trigger();
-
-        delay(25);  // enough  for 4.5 meter detection, which is more than the 
-                    // sensor can do
-
-        g_temp = g_dist.check_distance(g_num_measurement);
-
-        if (g_temp == 1) {
-            g_num_measurement++;
-        }
-        if (g_temp == -1) {
-            clear_echo_pin();
-            g_num_measurement++;
-        }
-    }
-    
     g_temp = g_servomanager.get_pos();
-    g_distances[g_temp] = g_dist.get_distance_cm(g_num_measurement);
-    Serial.print((byte) g_temp);
-    Serial.print(": ");
-    Serial.print(g_distances[g_temp]);
-    Serial.print("\n");
-
-    handle_serial();
+    g_distances[g_temp] = g_dist.get_distance();
+    serial_handle();
     g_ledring.update_values();
     delay(50);
 }

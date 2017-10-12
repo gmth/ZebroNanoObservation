@@ -15,33 +15,19 @@
 
 class Distance {
     private:
-        unsigned int echo_start;
-        unsigned int echo_end;
-        
         // duration_latest is the raw measurement,
         // duration_previous is the previous measurement.
         // duration_estimate is the estimated duration based
         // on the other two. (finding the difference between 
         // infinity and a hw bug)
-        unsigned int duration_latest;
-        unsigned int duration_previous;
-        unsigned int duration_estimate;
-        
-        unsigned int durations[MEASUREMENT_MAX_NUM];
-        unsigned int num_failed_readings;
-        bool new_data_available;
-        bool triggered;
+        unsigned int duration;
+        unsigned int duration_prev;
+        unsigned int duration_act;
+        void clear_echo_pin();
 
     public:
-        bool new_distance_available;
-        void trigger();
-        void IRQ_on_echo();
-        int check_distance(byte measurement_ix);
-        void rotate_left();
-        void rotate_right();
-        byte get_distance_cm(byte num_measurements);
-        int get_duration();
-        byte get_max_distance();
+        byte Distance::get_distance();
+        byte Distance::get_max_distance();
         Distance();
 };
 

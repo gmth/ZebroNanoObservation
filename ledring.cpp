@@ -20,12 +20,8 @@ LedRing::LedRing(byte distArr[], byte max_dist){
 }
 
 void LedRing::init() {
-    Serial.println("--> LEDs");
-    Serial.println("\taddLeds");
     LEDS.addLeds<WS2812, PIN_DATA_LED, GRB>(leds, NUM_LEDS);
-    Serial.println("\tsetBrightness");
     LEDS.setBrightness(ledsBrightness);
-    Serial.println("\tTest");
     update_values();
 }
 
