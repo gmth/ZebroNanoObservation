@@ -27,6 +27,7 @@ class Distance {
 
     public:
         byte Distance::get_distance();
+        byte Distance::get_smoothed_distance();
         byte Distance::get_max_distance();
         Distance();
 };

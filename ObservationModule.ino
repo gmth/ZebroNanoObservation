@@ -262,7 +262,7 @@ void setup() {
 void loop() {
     g_servomanager.sweep();
     g_temp = g_servomanager.get_pos();
-    g_distances[g_temp] = g_dist.get_distance();
+    g_distances[g_temp] = g_dist.get_smoothed_distance();
     serial_handle();
     g_ledring.update_values();
     delay(100);

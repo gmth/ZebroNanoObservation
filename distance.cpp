@@ -24,6 +24,16 @@ byte Distance::get_max_distance() {
     return (byte) DISTANCE_DURATION_MAX * 0.017;
 }
 
+byte Distance::get_smoothed_distance() {
+    int smoothed = 0;
+    int i;
+
+    for(i = 0; i < 4; i++) {
+        smoothed += get_distance();
+    }
+    return smoothed/4;
+}
+
 byte Distance::get_distance() {
     unsigned int distance;
     // Clears the trigPin
