@@ -10,7 +10,7 @@ void LedRing::radar_leds() {
     for (int i = 0; i < SERVO_NUM_ANGLES; i++) {
         int color = 100*distArray[i] / 170; //Takes elements 3, 16, 29, 42, 55, ..., 146
         //color is red (0) at distance of zero, green (90) at CONFIG.getmaxDistance() or higher
-        leds[SERVO_NUM_ANGLES-1 -i] = CHSV(color,255,255);
+        leds[i] = CHSV(color,255,255);
     }
 }
 
