@@ -10,8 +10,8 @@
 #include "./inc/error.h"
 
 #define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
-#define UART_DISTANCE_ADDR_OFFSET 15
-#define UART_LED_ADDR_OFFSET 15
+#define UART_DISTANCE_ADDR_OFFSET 16
+#define UART_LED_ADDR_OFFSET (32 - SERVO_NUM_ANGLES)
 
 #define BYTE_TO_BINARY(byte)  \
     (byte & 0x80 ? '1' : '0'), \
@@ -99,7 +99,7 @@ void serial_handle_write() {
     packet_receive.cr = Serial.read();
     packet_receive.lf = Serial.read();
     
-    if (packet_receive.addr - UART_LED_ADDR_OFFSET >= NUM_LEDS) {
+    if ((packet_receive.addr - UART_LED_ADDR_OFFSET) >= NUM_LEDS || (packet_receive.addr - UART_LED_ADDR_OFFSET) < 0) {
         g_error |= ERROR_UART_INVALID_ADDR;
         packet_send.header = 'f';
         valid = false;
@@ -229,7 +229,7 @@ void serial_handle() {
     // for UART, use the serial library. print sends nothing extra,
     // println adds a linefeed, and a carriage return
     
-    if (Serial.available() > 4) {
+    while (Serial.available() > 4) {
         switch(Serial.read()) {
             case 'r':
                 serial_handle_read();
@@ -265,5 +265,4 @@ void loop() {
     g_distances[g_temp] = g_dist.get_smoothed_distance();
     serial_handle();
     g_ledring.update_values();
-    delay(100);
 }

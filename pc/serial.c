@@ -9,6 +9,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <assert.h>
 #include <time.h>
 #include <inttypes.h>
@@ -35,7 +36,7 @@ void rs232_open(void) {
     int result;
     struct termios tty;
 
-    fd_RS232 = open("/dev/ttyUSB1", O_RDWR | O_NOCTTY);  // Hardcode your serial port here, or request it as an argument at runtime
+    fd_RS232 = open("/dev/ttyUSB0", O_RDWR | O_NOCTTY);  // Hardcode your serial port here, or request it as an argument at runtime
 
     assert(fd_RS232>=0);
 
@@ -178,15 +179,20 @@ void packet_read() {
     have_sent = false;
 }
 
+void packet_create_read(char addr) {
+    packet_out.header = 'r';
+    packet_out.addr = addr;
+    packet_out.data = 0;
+}
+
 void packet_create() {
     char c;
+    char word[256];
     c = getchar();
     printf("\nGOT %c %d \n", c, c);
     switch (c) {
         case 'r':
-            packet_out.header = 'r';
-            packet_out.addr = 20;
-            packet_out.data = 0;
+            packet_create_read((char) atoi(fgets(word, sizeof(word), stdin)));
             can_send = true;
             break;
         case 'w':
@@ -213,13 +219,30 @@ void packet_create() {
 }
 
 int main() {
+    int i;
     rs232_open();
-    sleep(3);
+    sleep(2);
 
     packet_out.header = 's';
     packet_out.addr = 0;
     packet_out.data = 0;
     can_send = true;
+    packet_send();
+    can_send = false;
+    packet_read();
+    printf("Sleeping for 8sec\n");
+    sleep(8);
+    printf("Sending read requests:\n");
+
+    for (i = 16; i < 16+11; i++) {
+        printf("i: %d\n", i);
+        packet_create_read(i);
+        can_send = true;
+        packet_send();
+        can_send = false;
+        packet_read();
+    }
+    
     while(true) {
         packet_send();
         can_send = false;
@@ -227,6 +250,9 @@ int main() {
         printf("Command: \n\t");
         packet_create();
     }
+    
+
+    printf("\n\n\nExiting.. \n");
 
     rs232_close();
 }

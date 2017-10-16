@@ -8,7 +8,7 @@
 #define DISTANCE_DURATION_MIN 200
 
 /* Any distance larger than the defined max is regarded infinetly far away */
-#define DISTANCE_DURATION_MAX 10000         // ~1.7 meters one-way
+#define DISTANCE_DURATION_MAX 6000                          // 1 meters one-way
 
 #define MEASUREMENT_MAX_NUM 4
 #define MEASUREMENT_MAX_NUM_TRIES 10

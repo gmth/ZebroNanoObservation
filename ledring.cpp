@@ -2,13 +2,15 @@
 #include "./inc/servomanager.h"
 #include "./inc/pinout.h"
 #include "./inc/ledring.h"
+#include "./inc/distance.h"
 
 #define NUM_LEDS 24
 #define ledsBrightness 30
 
 void LedRing::radar_leds() {
     for (int i = 0; i < SERVO_NUM_ANGLES; i++) {
-        int color = 100*distArray[i] / 170; //Takes elements 3, 16, 29, 42, 55, ..., 146
+        int color = distArray[i]; //Takes elements 3, 16, 29, 42, 55, ..., 146
+        // color = min(0, color-30);
         //color is red (0) at distance of zero, green (90) at CONFIG.getmaxDistance() or higher
         leds[i] = CHSV(color,255,255);
     }
