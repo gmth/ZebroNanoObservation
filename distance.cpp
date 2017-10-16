@@ -20,16 +20,33 @@ void Distance::clear_echo_pin() {
     pinMode(PIN_INT_ECHO, INPUT);
 }
 
+
 byte Distance::get_max_distance() {
     return (byte) DISTANCE_DURATION_MAX * 0.017;
 }
 
 byte Distance::get_smoothed_distance() {
+    byte i;
+    byte highest = 0;
+    byte lowest = 0;
     int smoothed = 0;
-    int i;
 
-    for(i = 0; i < 4; i++) {
-        smoothed += get_distance();
+    byte distances[6] = {0};
+    for (i = 0; i < 6; i++) {
+        distances[i] = get_distance();
+        if (distances[i] > distances[highest]) {
+            highest = i;
+        }
+        if (distances[i] < distances[lowest]) {
+            lowest = i;
+        }
+        delay(50);
+    }
+    
+    distances[highest] = 0;
+    distances[lowest] = 0;
+    for (i = 0; i < 6; i++) {
+        smoothed += distances[i];
     }
     return smoothed/4;
 }
