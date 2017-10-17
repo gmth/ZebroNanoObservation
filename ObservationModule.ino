@@ -64,6 +64,11 @@ void serial_handle_read() {
         packet_send.header = 'f';
         valid = false;
     }
+    if (packet_receive.addr - UART_DISTANCE_ADDR_OFFSET < 0) {
+        g_error |= ERROR_UART_INVALID_ADDR;
+        packet_send.header = 'f';
+        valid = false;
+    }
     if (packet_receive.data != 0) {
         g_error |= ERROR_UART_INVALID_DATA;
         packet_send.header = 'f';
@@ -279,7 +284,7 @@ void loop_ugly() {
     byte distances[6] = {0};
 
 /* Handle servo, and do the serial */
-    g_servomanager.sweep();
+//    g_servomanager.sweep();
     g_temp = g_servomanager.get_pos();
     serial_handle();
 
