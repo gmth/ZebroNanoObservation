@@ -259,10 +259,59 @@ void setup() {
     g_ledring.init();
 }
 
-void loop() {
+// Handles serial only once per loop, which may cause massive waiting times
+// on the other side of the UART. The code looks nice though..
+void loop_nice() {
     g_servomanager.sweep();
     g_temp = g_servomanager.get_pos();
     g_distances[g_temp] = g_dist.get_smoothed_distance();
     serial_handle();
     g_ledring.update_values();
 }
+
+// Handles serial more often and does the smoothing in the main loop.
+// Ugly, but works better for communication
+void loop_ugly() {
+    byte i;
+    byte highest = 0;
+    byte lowest = 0;
+    int smoothed = 0;
+    byte distances[6] = {0};
+
+/* Handle servo, and do the serial */
+    g_servomanager.sweep();
+    g_temp = g_servomanager.get_pos();
+    serial_handle();
+
+/* Get multiple measurements, and do serial after each measurement */
+    for (i = 0; i < 6; i++) {
+        distances[i] = g_dist.get_distance();
+        if (distances[i] > distances[highest]) {
+            highest = i;
+        }
+        if (distances[i] < distances[lowest]) {
+            lowest = i;
+        }
+        delay(50);
+        serial_handle();
+    }
+    distances[highest] = 0;
+    distances[lowest] = 0;
+    for (i = 0; i < 6; i++) {
+        smoothed += distances[i];
+    }
+    g_distances[g_temp] = smoothed / 4;
+
+/* Again handle serial */
+    serial_handle();
+
+/* Update all LEDS */
+    g_ledring.update_values();
+}
+
+
+void loop() {
+    loop_ugly();
+}
+
+
