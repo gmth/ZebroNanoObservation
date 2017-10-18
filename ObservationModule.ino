@@ -262,6 +262,8 @@ void setup() {
     Serial.begin(38400, SERIAL_8N1);
     g_servomanager.init();
     g_ledring.init();
+
+    g_servomanager.toggle_sweep();
 }
 
 // Handles serial only once per loop, which may cause massive waiting times
@@ -284,7 +286,7 @@ void loop_ugly() {
     byte distances[6] = {0};
 
 /* Handle servo, and do the serial */
-//    g_servomanager.sweep();
+    g_servomanager.sweep();
     g_temp = g_servomanager.get_pos();
     serial_handle();
 
