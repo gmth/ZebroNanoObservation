@@ -262,6 +262,7 @@ void setup() {
     Serial.begin(38400, SERIAL_8N1);
     g_servomanager.init();
     g_ledring.init();
+
     g_servomanager.toggle_sweep();
 }
 
