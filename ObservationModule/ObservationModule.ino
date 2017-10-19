@@ -283,18 +283,19 @@ void loop_nice() {
 // Handles serial more often and does the smoothing in the main loop.
 // Ugly, but works better for communication
 void loop_ugly() {
+    byte num_measurements = 6;
     byte i;
     byte highest = 0;
     byte lowest = 0;
     int smoothed = 0;
-    byte distances[6] = {0};
+    byte distances[num_measurements] = {0};
 
 /* Handle servo, and do the serial */
     g_servomanager.sweep();
     serial_handle();
 
 /* Get multiple measurements, and do serial after each measurement */
-    for (i = 0; i < 6; i++) {
+    for (i = 0; i < num_measurements; i++) {
         distances[i] = g_dist.get_distance();
         if (distances[i] > distances[highest]) {
             highest = i;
@@ -302,19 +303,19 @@ void loop_ugly() {
         if (distances[i] < distances[lowest]) {
             lowest = i;
         }
-        delay(50);
+        delay(13);
         serial_handle();
     }
     distances[highest] = 0;
     distances[lowest] = 0;
-    for (i = 0; i < 6; i++) {
+    for (i = 0; i < num_measurements; i++) {
         smoothed += distances[i];
     }
     g_temp = g_servomanager.get_pos();
     
     for (i = 0; i < SERVO_NUM_ANGLES; i++) {
         if (g_position_map[i] == g_temp) {
-            g_distances[i] = smoothed / 4;
+            g_distances[i] = smoothed / (num_measurements - 2);
         }
     }
 
