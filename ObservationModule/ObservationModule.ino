@@ -31,7 +31,13 @@ struct Packet {
     byte lf;
 };
 byte g_error = 0;
+
 byte g_distances[SERVO_NUM_ANGLES] = {0};
+
+#define NUM_POSITIONS 5
+byte g_used_positions[NUM_POSITIONS] = { 1, 3, 5, 7, 9};
+byte g_position_map[SERVO_NUM_ANGLES] = {1, 1, 3, 3, 5, 5, 5, 7, 7, 9, 9};
+
 struct Packet packet_receive;
 struct Packet packet_send;
 
@@ -260,10 +266,8 @@ void serial_handle() {
 void setup() {
     int i;
     Serial.begin(38400, SERIAL_8N1);
-    g_servomanager.init();
+    g_servomanager.init(g_used_positions, NUM_POSITIONS);
     g_ledring.init();
-
-    g_servomanager.toggle_sweep();
 }
 
 // Handles serial only once per loop, which may cause massive waiting times
@@ -287,7 +291,6 @@ void loop_ugly() {
 
 /* Handle servo, and do the serial */
     g_servomanager.sweep();
-    g_temp = g_servomanager.get_pos();
     serial_handle();
 
 /* Get multiple measurements, and do serial after each measurement */
@@ -307,7 +310,13 @@ void loop_ugly() {
     for (i = 0; i < 6; i++) {
         smoothed += distances[i];
     }
-    g_distances[g_temp] = smoothed / 4;
+    g_temp = g_servomanager.get_pos();
+    
+    for (i = 0; i < SERVO_NUM_ANGLES; i++) {
+        if (g_position_map[i] == g_temp) {
+            g_distances[i] = smoothed / 4;
+        }
+    }
 
 /* Again handle serial */
     serial_handle();
