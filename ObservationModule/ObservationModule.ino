@@ -303,7 +303,7 @@ void loop_ugly() {
         if (distances[i] < distances[lowest]) {
             lowest = i;
         }
-        delay(13);
+        delay(20);
         serial_handle();
     }
     distances[highest] = 0;

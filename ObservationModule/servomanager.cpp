@@ -18,7 +18,7 @@ void ServoManager::step_left() {
         pos_ix--;
     }
     servo.write(positions[used_positions[pos_ix]]);
-    delay(50);
+    delay(70);
 }
 
 void ServoManager::step_right() {
@@ -26,7 +26,7 @@ void ServoManager::step_right() {
         pos_ix++;
     }
     servo.write(positions[used_positions[pos_ix]]);
-    delay(50);
+    delay(70);
 }
 
 void ServoManager::set_neutral() {
