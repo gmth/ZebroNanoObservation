@@ -20,9 +20,9 @@ class Distance {
         // duration_estimate is the estimated duration based
         // on the other two. (finding the difference between 
         // infinity and a hw bug)
-        unsigned int duration;
-        unsigned int duration_prev;
-        unsigned int duration_act;
+        int duration;
+        int duration_prev;
+        int duration_act;
         void clear_echo_pin();
 
     public:

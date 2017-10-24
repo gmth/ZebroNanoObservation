@@ -63,8 +63,7 @@ byte Distance::get_distance() {
     digitalWrite(PIN_DATA_TRIGGER, LOW);
 
     duration_prev = duration;
-
-    duration = pulseIn(PIN_INT_ECHO, HIGH);
+    duration = pulseIn(PIN_INT_ECHO, HIGH, 20000);
 
     if (duration == 0) {
         clear_echo_pin();

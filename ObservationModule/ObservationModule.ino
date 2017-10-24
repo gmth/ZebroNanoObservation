@@ -295,6 +295,8 @@ void loop_ugly() {
     serial_handle();
 
 /* Get multiple measurements, and do serial after each measurement */
+    g_temp = g_servomanager.get_pos();
+    
     for (i = 0; i < num_measurements; i++) {
         distances[i] = g_dist.get_distance();
         if (distances[i] > distances[highest]) {
@@ -306,16 +308,19 @@ void loop_ugly() {
         delay(20);
         serial_handle();
     }
+
     distances[highest] = 0;
     distances[lowest] = 0;
+
     for (i = 0; i < num_measurements; i++) {
         smoothed += distances[i];
     }
-    g_temp = g_servomanager.get_pos();
     
     for (i = 0; i < SERVO_NUM_ANGLES; i++) {
         if (g_position_map[i] == g_temp) {
             g_distances[i] = smoothed / (num_measurements - 2);
+            //g_distances[i] = distances[highest];
+
         }
     }
 
@@ -324,6 +329,7 @@ void loop_ugly() {
 
 /* Update all LEDS */
     g_ledring.update_values();
+
 }
 
 

@@ -57,7 +57,7 @@ void ServoManager::sweep() {
     }
 
     servo.write(positions[used_positions[pos_ix]]);
-    delay(50);
+    delay(100);
 }
 
 void ServoManager::toggle_sweep() {
