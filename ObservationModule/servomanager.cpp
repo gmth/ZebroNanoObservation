@@ -60,8 +60,16 @@ void ServoManager::sweep() {
     delay(100);
 }
 
-void ServoManager::toggle_sweep() {
+void ServoManager::sweep_toggle() {
     use_sweep = !use_sweep;
+}
+
+void ServoManager::sweep_on() {
+    use_sweep = true;
+}
+
+void ServoManager::sweep_off() {
+    use_sweep = false;
 }
 
 char ServoManager::get_pos() {

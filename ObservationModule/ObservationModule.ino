@@ -179,7 +179,7 @@ void serial_handle_neutral() {
     serial_send_packet();
 }
 
-void serial_handle_sweep() {
+void serial_handle_sweep(char c) {
     bool valid = true;
     packet_receive.addr = Serial.read();
     packet_receive.data = Serial.read();
@@ -208,7 +208,12 @@ void serial_handle_sweep() {
     }
     if (valid) {
         packet_send.header = 's';
-        g_servomanager.toggle_sweep();
+        if (c == 's') {
+            g_servomanager.sweep_on();
+        }
+        if (c == 'h') {
+            g_servomanager.sweep_off();
+        }
         g_error &= ~(ERROR_UART_INVALID_ADDR);
         g_error &= ~(ERROR_UART_INVALID_DATA);
         g_error &= ~(ERROR_UART_INVALID_CR);
@@ -252,7 +257,10 @@ void serial_handle() {
                 serial_handle_neutral();
                 break;
             case 's':
-                serial_handle_sweep();
+                serial_handle_sweep('s');
+                break;
+            case 'h':
+                serial_handle_sweep('h');
                 break;
             case 'q':
                 serial_handle_query();
@@ -336,5 +344,3 @@ void loop_ugly() {
 void loop() {
     loop_ugly();
 }
-
-

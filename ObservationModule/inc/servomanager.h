@@ -25,7 +25,9 @@ class ServoManager {
         void step_right();
         void set_neutral();
         void sweep();
-        void toggle_sweep();
+        void sweep_toggle();
+        void sweep_on();
+        void sweep_off();
         char get_pos();
 };
 #endif

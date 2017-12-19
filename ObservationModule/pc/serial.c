@@ -213,6 +213,12 @@ void packet_create() {
             packet_out.data = 0;
             can_send = true;
             break;
+        case 'h':
+            packet_out.header = 'h';
+            packet_out.addr = 0;
+            packet_out.data = 0;
+            can_send = true;
+            break;
         default:
             break;
     }
