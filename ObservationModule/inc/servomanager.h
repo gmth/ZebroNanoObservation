@@ -4,6 +4,8 @@
 #include <Servo.h>
 #include <Arduino.h>
 
+#include "zebrobus.h"
+
 #define SERVO_NUM_ANGLES 11
 
 
@@ -19,8 +21,10 @@ class ServoManager {
         byte pos_servo;
         Servo servo;
 
+		ZebroBus *zebrobus;
+
     public:
-        void init(byte *usedpositions, byte numpositions);
+        void init(byte *usedpositions, byte numpositions, ZebroBus *z);
         void step_left();
         void step_right();
         void set_neutral();
