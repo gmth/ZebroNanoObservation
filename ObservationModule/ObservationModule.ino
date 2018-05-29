@@ -78,12 +78,14 @@ void loop_ugly() {
     byte distances[num_measurements] = {0};
 
 /* Handle servo, and do the serial */
+	delay(40);
     g_servomanager.sweep();
 	g_zebrobus.handle();
 
 /* Get multiple measurements, and do serial after each measurement */
     g_temp = g_servomanager.get_pos();
     
+	delay(100);
     for (i = 0; i < num_measurements; i++) {
         distances[i] = g_dist.get_distance();
         if (distances[i] > distances[highest]) {
@@ -92,8 +94,8 @@ void loop_ugly() {
         if (distances[i] < distances[lowest]) {
             lowest = i;
         }
-        delay(20);
 		g_zebrobus.handle();
+		delay(40);
     }
 
     distances[highest] = 0;
