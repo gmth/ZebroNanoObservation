@@ -1,7 +1,10 @@
 #include "inc/servomanager.h"
+#include "inc/zebrobus_vregs.h"
 #include "inc/pinout.h"
 #include "inc/uart.h"
 #include "Arduino.h"
+
+extern uint8_t vregs[ZEBROBUS_QUEUESIZE];
 
 void ServoManager::init(byte *usedpositions, byte numpositions, ZebroBus *z) {
     servo.attach(PIN_PWM_SERVO);
@@ -39,6 +42,11 @@ void ServoManager::set_neutral() {
 
 void ServoManager::sweep() {
 	bool moved = false;
+
+	if (vregs[VREGS_OBS_SERVO_NOSWEEP]) {
+		return;
+	}
+
     if (zebrobus->read(VREGS_OBS_SERVO_NOSWEEP)) {
 
 		if (zebrobus->read(VREGS_OBS_SERVO_SET0)) {
