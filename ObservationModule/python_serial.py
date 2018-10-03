@@ -22,7 +22,7 @@ while True:
 
     data = ser.read(length)
     # print("%03d %03d %03d %03d" % (data[0], data[1], data[2], data[3]))
-    print([int(n) for n in data])
+    print([str(int(n)).rjust(4) for n in data])
     time.sleep(0.1)
 
 
